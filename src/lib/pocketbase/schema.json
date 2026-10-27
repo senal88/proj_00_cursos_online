@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-26T22:08:11.434Z",
+  "generatedAt": "2026-10-26T22:08:59.607Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id",
-        "view": "id = @request.auth.id",
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || id = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || id = @request.auth.id)",
         "create": "",
-        "update": "id = @request.auth.id",
-        "delete": "id = @request.auth.id"
+        "update": "@request.auth.id != '' && (@request.auth.role = 'admin' || id = @request.auth.id)",
+        "delete": "@request.auth.id != '' && (@request.auth.role = 'admin' || id = @request.auth.id)"
       },
       "fields": [
         {
@@ -29,19 +29,890 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "admin",
+            "aluno"
+          ]
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
-        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''",
+        "CREATE INDEX `idx_users_role` ON `users` (role)"
+      ]
+    },
+    {
+      "name": "cursos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || situacao = 'publicado'",
+        "view": "@request.auth.role = 'admin' || situacao = 'publicado'",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "subtitulo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "imagem_capa",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "preco",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "rascunho",
+            "publicado"
+          ]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        },
+        {
+          "name": "kiwify_checkout_url",
+          "type": "url",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_cursos_situacao ON cursos (situacao)",
+        "CREATE INDEX idx_cursos_categoria ON cursos (categoria)"
+      ]
+    },
+    {
+      "name": "modulos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || curso.situacao = 'publicado'",
+        "view": "@request.auth.role = 'admin' || curso.situacao = 'publicado'",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "curso",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "cursos"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_modulos_curso ON modulos (curso)",
+        "CREATE INDEX idx_modulos_ordem ON modulos (ordem)"
+      ]
+    },
+    {
+      "name": "aulas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || (@request.auth.id != '' && situacao = 'publicado' && @collection.matriculas.aluno ?= @request.auth.id && @collection.matriculas.curso ?= modulo.curso && @collection.matriculas.situacao ?= 'ativa')",
+        "view": "@request.auth.role = 'admin' || (@request.auth.id != '' && situacao = 'publicado' && @collection.matriculas.aluno ?= @request.auth.id && @collection.matriculas.curso ?= modulo.curso && @collection.matriculas.situacao ?= 'ativa')",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "modulo",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "modulos"
+        },
+        {
+          "name": "video_url",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "duracao_minutos",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "rascunho",
+            "publicado"
+          ]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        },
+        {
+          "name": "materiais",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "arquivos_materiais",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "transcricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "situacao_busca",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "nao_preparada",
+            "preparada",
+            "erro"
+          ]
+        },
+        {
+          "name": "quantidade_trechos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "erro_preparo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_preparo_busca",
+          "type": "date",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_aulas_modulo ON aulas (modulo)",
+        "CREATE INDEX idx_aulas_ordem ON aulas (ordem)",
+        "CREATE INDEX idx_aulas_situacao ON aulas (situacao)"
+      ]
+    },
+    {
+      "name": "matriculas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || aluno = @request.auth.id",
+        "view": "@request.auth.role = 'admin' || aluno = @request.auth.id",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "aluno",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "curso",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "cursos"
+        },
+        {
+          "name": "situacao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "ativa",
+            "cancelada",
+            "concluida"
+          ]
+        },
+        {
+          "name": "data_matricula",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_matriculas_aluno_curso ON matriculas (aluno, curso)",
+        "CREATE INDEX idx_matriculas_aluno ON matriculas (aluno)",
+        "CREATE INDEX idx_matriculas_curso ON matriculas (curso)",
+        "CREATE INDEX idx_matriculas_situacao ON matriculas (situacao)"
+      ]
+    },
+    {
+      "name": "progresso",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || matricula.aluno = @request.auth.id",
+        "view": "@request.auth.role = 'admin' || matricula.aluno = @request.auth.id",
+        "create": "@request.auth.role = 'admin' || (@request.auth.id != '' && matricula.aluno = @request.auth.id && matricula.situacao = 'ativa')",
+        "update": "@request.auth.role = 'admin' || (@request.auth.id != '' && matricula.aluno = @request.auth.id && matricula.situacao = 'ativa')",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "matricula",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "matriculas"
+        },
+        {
+          "name": "aula",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "aulas"
+        },
+        {
+          "name": "situacao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "iniciada",
+            "concluida"
+          ]
+        },
+        {
+          "name": "minuto_parada",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_conclusao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_progresso_matricula_aula ON progresso (matricula, aula)",
+        "CREATE INDEX idx_progresso_matricula ON progresso (matricula)"
+      ]
+    },
+    {
+      "name": "trechos_busca",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin'",
+        "view": "@request.auth.role = 'admin'",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "curso",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "cursos"
+        },
+        {
+          "name": "aula",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "aulas"
+        },
+        {
+          "name": "posicao",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "conteudo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_preparo",
+          "type": "date",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_trechos_aula ON trechos_busca (aula)",
+        "CREATE INDEX idx_trechos_curso ON trechos_busca (curso)",
+        "CREATE INDEX idx_trechos_posicao ON trechos_busca (aula, posicao)"
+      ]
+    },
+    {
+      "name": "historico_buscas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || (@request.auth.id != '' && aluno = @request.auth.id)",
+        "view": "@request.auth.role = 'admin' || (@request.auth.id != '' && aluno = @request.auth.id)",
+        "create": "@request.auth.role = 'admin' || (@request.auth.id != '' && aluno = @request.auth.id)",
+        "update": "@request.auth.role = 'admin' || (@request.auth.id != '' && aluno = @request.auth.id)",
+        "delete": "@request.auth.role = 'admin' || (@request.auth.id != '' && aluno = @request.auth.id)"
+      },
+      "fields": [
+        {
+          "name": "aluno",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "pergunta",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "resposta",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "aulas_citadas",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fontes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total_trechos_analisados",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_historico_aluno_created ON historico_buscas (aluno, created DESC)"
+      ]
+    },
+    {
+      "name": "pontuacao",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || aluno = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || aluno = @request.auth.id)",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "aluno",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "pontos_total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nivel_atual",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sequencia_dias",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultimo_dia_estudo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "aulas_pontuadas",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cursos_pontuados",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_pontuacao_aluno ON pontuacao (aluno)"
+      ]
+    },
+    {
+      "name": "recompensas_conquistadas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && (@request.auth.role = 'admin' || aluno = @request.auth.id)",
+        "view": "@request.auth.id != '' && (@request.auth.role = 'admin' || aluno = @request.auth.id)",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "aluno",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "recompensa",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "primeira_aula",
+            "primeiro_curso",
+            "dedicado",
+            "maratonista"
+          ]
+        },
+        {
+          "name": "data_conquista",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_recompensas_aluno_rec ON recompensas_conquistadas (aluno, recompensa)",
+        "CREATE INDEX idx_recompensas_aluno ON recompensas_conquistadas (aluno)"
+      ]
+    },
+    {
+      "name": "configuracoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin'",
+        "view": "@request.auth.role = 'admin'",
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "chave",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "valor",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_configuracoes_chave ON configuracoes (chave)"
+      ]
+    },
+    {
+      "name": "pedidos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' || aluno = @request.auth.id",
+        "view": "@request.auth.role = 'admin' || aluno = @request.auth.id",
+        "create": "@request.auth.id != '' || @request.auth.id = ''",
+        "update": "@request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "aluno",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "curso",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "cursos"
+        },
+        {
+          "name": "aluno_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "aluno_nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "pago",
+            "falhou",
+            "expirado"
+          ]
+        },
+        {
+          "name": "kiwify_order_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "kiwify_order_ref",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "checkout_link",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "origem_utm",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_confirmacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_pedidos_aluno ON pedidos (aluno)",
+        "CREATE INDEX idx_pedidos_curso ON pedidos (curso)",
+        "CREATE INDEX idx_pedidos_situacao ON pedidos (situacao)",
+        "CREATE INDEX idx_pedidos_order_id ON pedidos (kiwify_order_id)",
+        "CREATE INDEX idx_pedidos_email ON pedidos (aluno_email)"
       ]
     }
   ]
